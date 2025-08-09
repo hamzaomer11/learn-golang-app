@@ -24,10 +24,10 @@ func TestFileSystemStore(t *testing.T) {
 			{"Cleo", 10},
 		}
 
-		assertLeague(t, got, expected)
+		AssertLeague(t, got, expected)
 
 		got = store.GetLeague()
-		assertLeague(t, got, expected)
+		AssertLeague(t, got, expected)
 	})
 
 	t.Run("get player score", func(t *testing.T) {

@@ -6,28 +6,8 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"reflect"
 	"testing"
 )
-
-type StubPlayerStore struct {
-	score    map[string]int
-	winCalls []string
-	league   []Player
-}
-
-func (s *StubPlayerStore) GetPlayerScore(name string) int {
-	score := s.score[name]
-	return score
-}
-
-func (s *StubPlayerStore) RecordWin(name string) {
-	s.winCalls = append(s.winCalls, name)
-}
-
-func (s *StubPlayerStore) GetLeague() League {
-	return s.league
-}
 
 func TestGETPlayers(t *testing.T) {
 	store := StubPlayerStore{
@@ -47,8 +27,8 @@ func TestGETPlayers(t *testing.T) {
 
 		server.ServeHTTP(response, request)
 
-		assertStatus(t, response.Code, http.StatusOK)
-		assertResponseBody(t, response.Body.String(), "20")
+		AssertStatus(t, response.Code, http.StatusOK)
+		AssertResponseBody(t, response.Body.String(), "20")
 	})
 	t.Run("returns Floyd's score", func(t *testing.T) {
 		request := NewGetScoreRequest("Floyd")
@@ -56,8 +36,8 @@ func TestGETPlayers(t *testing.T) {
 
 		server.ServeHTTP(response, request)
 
-		assertStatus(t, response.Code, http.StatusOK)
-		assertResponseBody(t, response.Body.String(), "10")
+		AssertStatus(t, response.Code, http.StatusOK)
+		AssertResponseBody(t, response.Body.String(), "10")
 	})
 	t.Run("returns 404 error on missing players", func(t *testing.T) {
 		request := NewGetScoreRequest("Apollo")
@@ -65,7 +45,7 @@ func TestGETPlayers(t *testing.T) {
 
 		server.ServeHTTP(response, request)
 
-		assertStatus(t, response.Code, http.StatusNotFound)
+		AssertStatus(t, response.Code, http.StatusNotFound)
 	})
 }
 
@@ -86,15 +66,9 @@ func TestStoreWins(t *testing.T) {
 
 		server.ServeHTTP(response, request)
 
-		assertStatus(t, response.Code, http.StatusAccepted)
+		AssertStatus(t, response.Code, http.StatusAccepted)
 
-		if len(store.winCalls) != 1 {
-			t.Errorf("got %d calls to record wins, expected %d", len(store.winCalls), 1)
-		}
-
-		if store.winCalls[0] != player {
-			t.Errorf("did not store correct winner, got %q, expected %q", store.winCalls[0], player)
-		}
+		AssertPlayerWin(t, &store, player)
 	})
 }
 
@@ -116,7 +90,7 @@ func TestLeague(t *testing.T) {
 			t.Fatalf("Unable to parse response from server %q into slice of Player, '%v'", response.Body, err)
 		}
 
-		assertStatus(t, response.Code, http.StatusOK)
+		AssertStatus(t, response.Code, http.StatusOK)
 	})
 
 	t.Run("it returns the league table as JSON", func(t *testing.T) {
@@ -135,18 +109,11 @@ func TestLeague(t *testing.T) {
 		server.ServeHTTP(response, request)
 
 		got := getLeagueFromResponse(t, response.Body)
-		assertStatus(t, response.Code, http.StatusOK)
-		assertLeague(t, got, expectedLeague)
-		assertContentType(t, response, jsonContentType)
+		AssertStatus(t, response.Code, http.StatusOK)
+		AssertLeague(t, got, expectedLeague)
+		AssertContentType(t, response, jsonContentType)
 
 	})
-}
-
-func assertStatus(t testing.TB, got, expected int) {
-	t.Helper()
-	if got != expected {
-		t.Errorf("did not get correct status, got %d, want %d", got, expected)
-	}
 }
 
 func NewGetScoreRequest(name string) *http.Request {
@@ -157,13 +124,6 @@ func NewGetScoreRequest(name string) *http.Request {
 func NewPostWinRequest(name string) *http.Request {
 	req, _ := http.NewRequest(http.MethodPost, fmt.Sprintf("/players/%s", name), nil)
 	return req
-}
-
-func assertResponseBody(t testing.TB, got, expected string) {
-	t.Helper()
-	if got != expected {
-		t.Errorf("response body is wrong, got %q, expected %q", got, expected)
-	}
 }
 
 func getLeagueFromResponse(t testing.TB, body io.Reader) (league []Player) {
@@ -177,21 +137,7 @@ func getLeagueFromResponse(t testing.TB, body io.Reader) (league []Player) {
 	return league
 }
 
-func assertLeague(t testing.TB, got, expected []Player) {
-	t.Helper()
-	if !reflect.DeepEqual(got, expected) {
-		t.Errorf("got %v expect %v", got, expected)
-	}
-}
-
 func newLeagueRequest() *http.Request {
 	req, _ := http.NewRequest(http.MethodGet, "/league", nil)
 	return req
-}
-
-func assertContentType(t testing.TB, response *httptest.ResponseRecorder, expected string) {
-	t.Helper()
-	if response.Result().Header.Get("content-type") != expected {
-		t.Errorf("response did not have content-type of application/json, got %v", response.Result().Header)
-	}
 }

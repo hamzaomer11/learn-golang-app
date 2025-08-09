@@ -18,7 +18,7 @@ func NewCLI(store PlayerStore, in io.Reader) *CLI {
 	}
 }
 
-func (cli *CLI) PlayerPoker() {
+func (cli *CLI) PlayPoker() {
 	userInput := cli.readLine()
 	cli.playerStore.RecordWin(extractWinner(userInput))
 }

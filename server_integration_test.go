@@ -1,17 +1,21 @@
-package poker
+package poker_test
 
 import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	poker "github.com/hamzaomer11/learn-go-app"
 )
 
 func TestRecordingWinsAndRetrievingThem(t *testing.T) {
 	database, cleanDatabase := createTempFile(t, `[]`)
 	defer cleanDatabase()
-	store, err := NewFileSystemPlayerStore(database)
+	store, err := poker.NewFileSystemPlayerStore(database)
+
 	assertNoError(t, err)
-	server := NewPlayerServer(store)
+
+	server := mustMakePlayerServer(t, store, dummyGame)
 	player := "Pepper"
 
 	server.ServeHTTP(httptest.NewRecorder(), NewPostWinRequest(player))
@@ -21,21 +25,21 @@ func TestRecordingWinsAndRetrievingThem(t *testing.T) {
 	t.Run("get score", func(t *testing.T) {
 		response := httptest.NewRecorder()
 		server.ServeHTTP(response, NewGetScoreRequest(player))
-		AssertStatus(t, response, http.StatusOK)
+		poker.AssertStatus(t, response, http.StatusOK)
 
-		AssertResponseBody(t, response.Body.String(), "3")
+		poker.AssertResponseBody(t, response.Body.String(), "3")
 	})
 
 	t.Run("get league", func(t *testing.T) {
 		response := httptest.NewRecorder()
 		server.ServeHTTP(response, newLeagueRequest())
-		AssertStatus(t, response, http.StatusOK)
+		poker.AssertStatus(t, response, http.StatusOK)
 
 		got := getLeagueFromResponse(t, response.Body)
-		expected := []Player{
+		expected := []poker.Player{
 			{"Pepper", 3},
 		}
 
-		AssertLeague(t, got, expected)
+		poker.AssertLeague(t, got, expected)
 	})
 }

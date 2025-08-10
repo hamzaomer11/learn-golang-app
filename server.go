@@ -3,7 +3,9 @@ package poker
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
+	"strconv"
 	"strings"
 	"text/template"
 
@@ -19,43 +21,61 @@ type PlayerStore interface {
 type PlayerServer struct {
 	store PlayerStore
 	http.Handler
+	template *template.Template
+	game     Game
 }
+
+const htmlTemplatePath = "game.html"
 
 type Player struct {
 	Name string
 	Wins int
 }
 
-const jsonContentType = "application/json"
+const JSONContentType = "application/json"
 
-func NewPlayerServer(store PlayerStore) *PlayerServer {
+var wsUpgrader = websocket.Upgrader{
+	ReadBufferSize:  1024,
+	WriteBufferSize: 1024,
+}
+
+func NewPlayerServer(store PlayerStore, game Game) (*PlayerServer, error) {
 	p := new(PlayerServer)
 
+	tmpl, err := template.ParseFiles(htmlTemplatePath)
+
+	if err != nil {
+		return nil, fmt.Errorf("problem opening %s %v", htmlTemplatePath, err)
+	}
+
+	p.game = game
+	p.template = tmpl
 	p.store = store
 
 	router := http.NewServeMux()
 	router.Handle("/league", http.HandlerFunc(p.leagueHandler))
 	router.Handle("/players/", http.HandlerFunc(p.playersHandler))
-	router.Handle("/game", http.HandlerFunc(p.game))
+	router.Handle("/game", http.HandlerFunc(p.playGame))
 	router.Handle("/ws", http.HandlerFunc(p.webSocket))
 
 	p.Handler = router
 
-	return p
+	return p, nil
 }
 
 func (p *PlayerServer) webSocket(w http.ResponseWriter, r *http.Request) {
-	upgrader := websocket.Upgrader{
-		ReadBufferSize:  1024,
-		WriteBufferSize: 1024,
-	}
-	conn, _ := upgrader.Upgrade(w, r, nil)
-	_, winnerMsg, _ := conn.ReadMessage()
-	p.store.RecordWin(string(winnerMsg))
+	conn, _ := wsUpgrader.Upgrade(w, r, nil)
+
+	_, numberOfPlayersMsg, _ := conn.ReadMessage()
+	numberOfPlayers, _ := strconv.Atoi(string(numberOfPlayersMsg))
+	p.game.Start(numberOfPlayers, io.Discard)
+
+	_, winner, _ := conn.ReadMessage()
+	p.game.Finish(string(winner))
 }
 
 func (p *PlayerServer) leagueHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("content-type", jsonContentType)
+	w.Header().Set("content-type", JSONContentType)
 	json.NewEncoder(w).Encode(p.store.GetLeague())
 }
 
@@ -70,15 +90,8 @@ func (p *PlayerServer) playersHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (p *PlayerServer) game(w http.ResponseWriter, r *http.Request) {
-	tmpl, err := template.ParseFiles("game.html")
-
-	if err != nil {
-		http.Error(w, fmt.Sprintf("problem loading template %s", err.Error()), http.StatusInternalServerError)
-		return
-	}
-
-	tmpl.Execute(w, nil)
+func (p *PlayerServer) playGame(w http.ResponseWriter, r *http.Request) {
+	p.template.Execute(w, nil)
 }
 
 func (p *PlayerServer) showScore(w http.ResponseWriter, player string) {

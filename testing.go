@@ -56,10 +56,10 @@ func AssertPlayerWin(t testing.TB, store *StubPlayerStore, winner string) {
 	}
 }
 
-func AssertStatus(t testing.TB, got, expected int) {
+func AssertStatus(t testing.TB, got *httptest.ResponseRecorder, expected int) {
 	t.Helper()
-	if got != expected {
-		t.Errorf("did not get correct status, got %d, want %d", got, expected)
+	if got.Code != expected {
+		t.Errorf("did not get correct status, got %d, expected %d", got.Code, expected)
 	}
 }
 

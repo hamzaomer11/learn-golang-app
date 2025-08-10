@@ -32,7 +32,8 @@ func userSends(messages ...string) io.Reader {
 
 var dummySpyAlerter = &poker.SpyBlindAlerter{}
 var dummyPlayerStore = &poker.StubPlayerStore{}
-var dummyStdIn = &bytes.Buffer{}
+
+// var dummyStdIn = &bytes.Buffer{}
 var dummyStdOut = &bytes.Buffer{}
 
 func TestCLI(t *testing.T) {

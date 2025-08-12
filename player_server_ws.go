@@ -18,7 +18,6 @@ func (w *playerServerWS) Write(p []byte) (n int, err error) {
 		return 0, err
 	}
 
-	log.Println("Sent over WS:", string(p))
 	return len(p), nil
 }
 

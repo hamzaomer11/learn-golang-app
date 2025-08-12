@@ -3,10 +3,10 @@ package poker
 import (
 	"encoding/json"
 	"fmt"
+	"html/template"
 	"net/http"
 	"strconv"
 	"strings"
-	"text/template"
 
 	"github.com/gorilla/websocket"
 )
